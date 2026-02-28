@@ -814,17 +814,25 @@ function ProductCard({ product, onEdit, onDelete }: {
 export function ProductsScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | undefined>();
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
+    setLoadError('');
+    const { data, error } = await supabase
       .from('products')
       .select('*, product_images(image_url, display_order, is_primary)')
       .order('created_at', { ascending: false })
       .limit(100);
+    if (error) {
+      console.error('Products fetch error:', error);
+      setLoadError(error.message);
+      setLoading(false);
+      return;
+    }
     setProducts((data as Product[]) ?? []);
     setLoading(false);
   };
@@ -901,6 +909,17 @@ export function ProductsScreen() {
             </div>
           ))}
         </div>
+
+        {loadError && (
+          <div className="rounded-2xl p-4 flex items-start gap-3"
+            style={{ background: 'var(--rose)15', border: '1px solid var(--rose)40' }}>
+            <AlertTriangle size={16} style={{ color: 'var(--rose)', flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--rose)' }}>Failed to load products</p>
+              <p className="text-xs mt-1 font-mono" style={{ color: 'var(--rose)' }}>{loadError}</p>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-16">
