@@ -5,7 +5,7 @@ const SUPABASE_URL = 'https://lpcpporrmoxgaxnxejol.supabase.co';
 // ⚠️  SERVICE ROLE KEY — bypasses all RLS
 // Get from: Supabase Dashboard → Project Settings → API → service_role
 // KEEP THIS ON YOUR DEVICE ONLY — never share this key
-const SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY_HERE';
+const SERVICE_ROLE_KEY = 'sb_secret_6HmgD1X5qUvbGFXmHeh3gA_jut-LOm5';
 
 export const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
