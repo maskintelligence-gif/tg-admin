@@ -9,7 +9,8 @@ import { ProductsScreen } from './components/screens/Products';
 import { MediaLibrary } from './components/screens/MediaLibrary';
 import { ReportsScreen } from './components/screens/Reports';
 import { supabase } from './lib/supabase';
-import { WifiOff } from 'lucide-react';
+import { WifiOff, Loader2 } from 'lucide-react';
+import type { Session } from '@supabase/supabase-js';
 
 function useOnline() {
   const [online, setOnline] = useState(navigator.onLine);
@@ -55,18 +56,44 @@ function useBadges(tab: AdminTab) {
 }
 
 export default function App() {
-  const [authed, setAuthed] = useState(() => {
-    try { return localStorage.getItem('tg_admin_auth') === '1'; } catch { return false; }
-  });
+  // null = still checking, Session = logged in, false = not logged in
+  const [session, setSession] = useState<Session | null | false>(null);
   const [tab, setTab] = useState<AdminTab>('home');
   const online = useOnline();
   const badges = useBadges(tab);
 
-  if (!authed) return <Login onLogin={() => setAuthed(true)} />;
+  useEffect(() => {
+    // Check for existing session on mount
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? false);
+    });
 
+    // Listen for login / logout / token refresh
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession ?? false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Still checking session — show a neutral loading screen
+  if (session === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <Loader2 size={28} style={{ color: 'var(--accent)' }} className="animate-spin" />
+      </div>
+    );
+  }
+
+  // Not authenticated — show login
+  if (session === false) {
+    return <Login onLogin={() => {}} />;
+    // onLogin is a no-op: onAuthStateChange fires automatically after signIn
+  }
+
+  // Authenticated — show dashboard
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-      {/* Offline banner */}
       {!online && (
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 py-2 text-xs font-bold"
           style={{ background: 'var(--rose)', color: 'white' }}>
@@ -74,7 +101,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Screen content — media screen gets full height for scrolling */}
       <div style={{ paddingTop: !online ? '32px' : '0', minHeight: '100vh' }}>
         {tab === 'home'     && <HomeScreen onNavigate={setTab} />}
         {tab === 'orders'   && <OrdersScreen />}
