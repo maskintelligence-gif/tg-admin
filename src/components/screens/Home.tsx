@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Package, MessageCircle, DollarSign, Truck, TrendingUp, AlertTriangle, ChevronRight, Zap, RefreshCw } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import type { AdminTab } from './AdminNav';
 
 interface HomeProps {
