@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Send, Loader2, MessageCircle, User } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, MessageCircle, Trash2, X, MoreVertical, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface Conversation {
@@ -37,7 +37,12 @@ function ChatView({ conv, onBack }: { conv: Conversation; onBack: () => void }) 
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'clear' | 'delete' | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const c = conv.customers;
 
   const scrollDown = () => endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,8 +53,6 @@ function ChatView({ conv, onBack }: { conv: Conversation; onBack: () => void }) 
       .order('created_at', { ascending: true }).limit(100);
     setMessages((data as Message[]) ?? []);
     setLoading(false);
-
-    // Mark all customer messages as read
     await supabase.from('messages')
       .update({ read_at: new Date().toISOString() })
       .eq('conversation_id', conv.conversation_id)
@@ -86,7 +89,6 @@ function ChatView({ conv, onBack }: { conv: Conversation; onBack: () => void }) 
         message_type: 'text',
         content: text,
       });
-      // Update conversation last message
       await supabase.from('conversations').update({
         last_message_preview: text.slice(0, 100),
         updated_at: new Date().toISOString(),
@@ -94,11 +96,55 @@ function ChatView({ conv, onBack }: { conv: Conversation; onBack: () => void }) 
       }).eq('conversation_id', conv.conversation_id);
     } finally {
       setSending(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  // Clear all messages in conversation
+  const clearMessages = async () => {
+    setActionLoading(true);
+    setActionError('');
+    try {
+      const { error } = await supabase.from('messages')
+        .delete()
+        .eq('conversation_id', conv.conversation_id);
+      if (error) throw new Error(error.message);
+      // Reset preview
+      await supabase.from('conversations').update({
+        last_message_preview: '',
+        unread_count: 0,
+      }).eq('conversation_id', conv.conversation_id);
+      setMessages([]);
+      setConfirmAction(null);
+      setShowMenu(false);
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Delete conversation entirely
+  const deleteConversation = async () => {
+    setActionLoading(true);
+    setActionError('');
+    try {
+      const { error } = await supabase.from('conversations')
+        .delete()
+        .eq('conversation_id', conv.conversation_id);
+      if (error) throw new Error(error.message);
+      setConfirmAction(null);
+      onBack();
+    } catch (e) {
+      setActionError((e as Error).message);
+      setActionLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col z-40" style={{ background: 'var(--bg)' }}>
+    // z-[60] puts chat above the bottom nav (z-50)
+    <div className="fixed inset-0 flex flex-col z-[60]" style={{ background: 'var(--bg)' }}>
+
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
         style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
@@ -106,21 +152,100 @@ function ChatView({ conv, onBack }: { conv: Conversation; onBack: () => void }) 
           style={{ background: 'var(--surface2)' }}>
           <ArrowLeft size={18} style={{ color: 'var(--text)' }} />
         </button>
-        <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm"
+        <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
           style={{ background: 'var(--accent)', color: 'white' }}>
           {(c?.name || 'U')[0].toUpperCase()}
         </div>
-        <div>
-          <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{c?.name || 'Customer'}</p>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm truncate" style={{ color: 'var(--text)' }}>{c?.name || 'Customer'}</p>
           <p className="text-xs" style={{ color: 'var(--text3)' }}>{c?.phone || ''}</p>
+        </div>
+
+        {/* Menu button */}
+        <div className="relative">
+          <button onClick={() => setShowMenu(v => !v)}
+            className="p-2 rounded-xl active:scale-90"
+            style={{ background: showMenu ? 'var(--surface2)' : 'transparent' }}>
+            <MoreVertical size={18} style={{ color: 'var(--text2)' }} />
+          </button>
+
+          {/* Dropdown menu */}
+          {showMenu && (
+            <div className="absolute right-0 top-10 rounded-2xl overflow-hidden shadow-xl z-10 min-w-[180px]"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <button
+                onClick={() => { setConfirmAction('clear'); setShowMenu(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-all active:scale-98"
+                style={{ color: 'var(--amber)' }}>
+                <Trash2 size={15} /> Clear messages
+              </button>
+              <div style={{ height: '1px', background: 'var(--border)' }} />
+              <button
+                onClick={() => { setConfirmAction('delete'); setShowMenu(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-all active:scale-98"
+                style={{ color: 'var(--rose)' }}>
+                <Trash2 size={15} /> Delete conversation
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Confirm dialog */}
+      {confirmAction && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center px-6"
+          style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="w-full max-w-sm rounded-3xl p-6"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <p className="font-bold text-base mb-2" style={{ color: 'var(--text)' }}>
+              {confirmAction === 'clear' ? 'Clear all messages?' : 'Delete conversation?'}
+            </p>
+            <p className="text-sm mb-5" style={{ color: 'var(--text3)' }}>
+              {confirmAction === 'clear'
+                ? 'All messages in this chat will be permanently deleted. The conversation will remain.'
+                : `The entire conversation with ${c?.name || 'this customer'} and all messages will be permanently deleted.`}
+            </p>
+
+            {actionError && (
+              <div className="flex items-center gap-2 p-3 rounded-xl mb-4"
+                style={{ background: 'rgba(244,63,94,0.15)', border: '1px solid var(--rose)' }}>
+                <AlertTriangle size={13} style={{ color: 'var(--rose)' }} />
+                <p className="text-xs" style={{ color: 'var(--rose)' }}>{actionError}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setConfirmAction(null); setActionError(''); }}
+                disabled={actionLoading}
+                className="flex-1 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95"
+                style={{ background: 'var(--surface2)', color: 'var(--text2)' }}>
+                Cancel
+              </button>
+              <button
+                onClick={confirmAction === 'clear' ? clearMessages : deleteConversation}
+                disabled={actionLoading}
+                className="flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                style={{ background: 'var(--rose)', color: 'white', opacity: actionLoading ? 0.7 : 1 }}>
+                {actionLoading
+                  ? <><Loader2 size={14} className="animate-spin" /> Working…</>
+                  : confirmAction === 'clear' ? 'Clear' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3" onClick={() => setShowMenu(false)}>
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 size={24} style={{ color: 'var(--accent)' }} className="animate-spin" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-16 gap-2">
+            <MessageCircle size={32} style={{ color: 'var(--text3)' }} />
+            <p className="text-sm" style={{ color: 'var(--text3)' }}>No messages</p>
           </div>
         ) : (
           messages.map(msg => (
@@ -146,10 +271,10 @@ function ChatView({ conv, onBack }: { conv: Conversation; onBack: () => void }) 
       </div>
 
       {/* Quick replies */}
-      <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar"
-        style={{ borderTop: '1px solid var(--border)' }}>
-        {['Your order is confirmed ✅', 'On the way 🛵', 'Ready for pickup 📦', 'Call us: 0700000000'].map(r => (
-          <button key={r} onClick={() => setInput(r)}
+      <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar flex-shrink-0"
+        style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+        {['Order confirmed ✅', 'On the way 🛵', 'Ready for pickup 📦', 'Call us: 0700000000'].map(r => (
+          <button key={r} onClick={() => { setInput(r); inputRef.current?.focus(); }}
             className="flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-all active:scale-95"
             style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
             {r}
@@ -157,24 +282,24 @@ function ChatView({ conv, onBack }: { conv: Conversation; onBack: () => void }) 
         ))}
       </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 flex gap-2 safe-bottom"
+      {/* Input — sits above everything, no overlap with nav since we're z-[60] */}
+      <div className="px-4 py-3 flex gap-2 flex-shrink-0"
         style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
         <input
+          ref={inputRef}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
           placeholder="Reply to customer..."
           className="flex-1 px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-          style={{
-            background: 'var(--surface2)', color: 'var(--text)',
-            border: '1px solid var(--border)',
-          }}
+          style={{ background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}
         />
         <button onClick={send} disabled={!input.trim() || sending}
-          className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-90"
+          className="w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-90 flex-shrink-0"
           style={{ background: input.trim() ? 'var(--accent)' : 'var(--surface2)' }}>
-          {sending ? <Loader2 size={16} className="animate-spin" color="white" /> : <Send size={16} color="white" />}
+          {sending
+            ? <Loader2 size={16} className="animate-spin" color="white" />
+            : <Send size={16} color={input.trim() ? 'white' : 'var(--text3)'} />}
         </button>
       </div>
     </div>
@@ -250,7 +375,7 @@ export function ChatScreen() {
                     {(c?.name || 'U')[0].toUpperCase()}
                   </div>
                   {hasUnread && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2"
                       style={{ background: 'var(--accent)', borderColor: 'var(--bg)' }} />
                   )}
                 </div>
@@ -264,7 +389,8 @@ export function ChatScreen() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
-                    <p className="text-xs truncate" style={{ color: hasUnread ? 'var(--text)' : 'var(--text3)', fontWeight: hasUnread ? '500' : '400' }}>
+                    <p className="text-xs truncate"
+                      style={{ color: hasUnread ? 'var(--text)' : 'var(--text3)', fontWeight: hasUnread ? '500' : '400' }}>
                       {conv.last_message_preview || 'No messages yet'}
                     </p>
                     {hasUnread && (
