@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, ChevronRight, ChevronDown, Phone, MapPin, User, Clock, CheckCircle2, Truck, Store, Loader2, X } from 'lucide-react';
+import { Package, ChevronRight, ChevronDown, Phone, MapPin, User, Clock, CheckCircle2, Truck, Store, Loader2, X, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 type OrderStatus = 'pending_confirmation' | 'confirmed' | 'in_delivery' | 'ready_for_pickup' | 'complete' | 'cancelled';
@@ -182,7 +182,7 @@ function OrderModal({ order, onClose, onStatusChange }: { order: Order; onClose:
           {success && (
             <div className="flex items-center gap-2 rounded-2xl p-4"
               style={{
-                background: success.startsWith('Error') ? 'var(--rose)15' : '#10b98120',
+                background: success.startsWith('Error') ? 'rgba(244,63,94,0.15)' : '#10b98120',
                 border: `1px solid ${success.startsWith('Error') ? 'var(--rose)' : 'var(--emerald)'}`,
               }}>
               {success.startsWith('Error')
