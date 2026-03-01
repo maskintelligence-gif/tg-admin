@@ -63,8 +63,14 @@ function OrderModal({ order, onClose, onStatusChange }: { order: Order; onClose:
 
   const updateStatus = async (newStatus: OrderStatus, msg?: string) => {
     setLoading(true);
+    setSuccess('');
     try {
-      await supabase.from('orders').update({ order_status: newStatus }).eq('order_id', order.order_id);
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ order_status: newStatus })
+        .eq('order_id', order.order_id);
+
+      if (updateError) throw new Error(updateError.message);
 
       // If confirming — send receipt message to chat
       if (newStatus === 'confirmed') {
@@ -84,7 +90,8 @@ function OrderModal({ order, onClose, onStatusChange }: { order: Order; onClose:
       setSuccess(msg || 'Updated!');
       setTimeout(() => { onStatusChange(); onClose(); }, 1200);
     } catch(e) {
-      console.error(e);
+      console.error('updateStatus error:', e);
+      setSuccess('Error: ' + (e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -171,11 +178,20 @@ function OrderModal({ order, onClose, onStatusChange }: { order: Order; onClose:
             </div>
           </div>
 
-          {/* Success */}
+          {/* Success / Error */}
           {success && (
-            <div className="flex items-center gap-2 rounded-2xl p-4" style={{ background: '#10b98120', border: '1px solid var(--emerald)' }}>
-              <CheckCircle2 size={18} style={{ color: 'var(--emerald)' }} />
-              <p className="text-sm font-medium" style={{ color: 'var(--emerald)' }}>{success}</p>
+            <div className="flex items-center gap-2 rounded-2xl p-4"
+              style={{
+                background: success.startsWith('Error') ? 'var(--rose)15' : '#10b98120',
+                border: `1px solid ${success.startsWith('Error') ? 'var(--rose)' : 'var(--emerald)'}`,
+              }}>
+              {success.startsWith('Error')
+                ? <AlertTriangle size={18} style={{ color: 'var(--rose)' }} />
+                : <CheckCircle2 size={18} style={{ color: 'var(--emerald)' }} />}
+              <p className="text-sm font-medium"
+                style={{ color: success.startsWith('Error') ? 'var(--rose)' : 'var(--emerald)' }}>
+                {success}
+              </p>
             </div>
           )}
 
