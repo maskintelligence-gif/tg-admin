@@ -27,7 +27,7 @@ interface Product {
   primary_image_url: string | null;
   rating: number;
   review_count: number;
-  product_images?: { image_url: string; display_order: number; is_primary?: boolean }[];
+  product_images?: { image_url: string; display_order: number }[];
 }
 
 const CATEGORIES = [
@@ -521,7 +521,6 @@ function ProductForm({ product, onSave, onClose }: {
             product_id: targetId,
             image_url: img.url,
             display_order: i,
-            is_primary: i === 0,
           })),
         );
       }
@@ -824,7 +823,7 @@ export function ProductsScreen() {
     setLoadError('');
     const { data, error } = await supabase
       .from('products')
-      .select('*, product_images(image_url, display_order, is_primary)')
+      .select('*, product_images(image_url, display_order)')
       .order('created_at', { ascending: false })
       .limit(100);
     if (error) {
