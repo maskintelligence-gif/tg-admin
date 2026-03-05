@@ -566,9 +566,8 @@ function ProductForm({ product, onSave, onClose }: {
         </button>
       </div>
 
-      {/* Scrollable form body */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 pb-28">
-
+      {/* Scrollable form body - FIXED: Added extra bottom padding to account for bottom nav */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5" style={{ paddingBottom: '180px' }}>
         {/* ── Images (first — mobile photographers add photo first) ── */}
         <GalleryManager
           images={images}
@@ -678,9 +677,19 @@ function ProductForm({ product, onSave, onClose }: {
         )}
       </div>
 
-      {/* Footer: Save button */}
-      <div className="px-4 py-4 safe-bottom flex-shrink-0"
-        style={{ background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+      {/* Footer: Save button - FIXED: Now sticky with bottom nav offset */}
+      <div 
+        className="px-4 py-4 flex-shrink-0"
+        style={{ 
+          background: 'var(--surface)', 
+          borderTop: '1px solid var(--border)',
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 10,
+          marginBottom: '70px', // Height of your bottom navigation
+          paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))'
+        }}
+      >
         {/* Image summary */}
         {images.length > 0 && (
           <div className="flex items-center gap-1.5 mb-3">
