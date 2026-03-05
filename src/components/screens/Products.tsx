@@ -554,7 +554,7 @@ function ProductForm({ product, onSave, onClose }: {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'var(--bg)' }}>
+    <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: 'var(--bg)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 flex-shrink-0"
         style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
@@ -677,17 +677,12 @@ function ProductForm({ product, onSave, onClose }: {
         )}
       </div>
 
-      {/* Footer: Save button - FIXED: Now sticky with bottom nav offset */}
-      <div 
+      {/* Footer: Save button */}
+      <div
         className="px-4 py-4 flex-shrink-0"
-        style={{ 
-          background: 'var(--surface)', 
+        style={{
+          background: 'var(--surface)',
           borderTop: '1px solid var(--border)',
-          position: 'sticky',
-          bottom: 0,
-          zIndex: 10,
-          marginBottom: '70px', // Height of your bottom navigation
-          paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))'
         }}
       >
         {/* Image summary */}
