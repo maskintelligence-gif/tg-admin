@@ -1,4 +1,4 @@
-name: Extract ZIP Files
+name: Extract ZIP File
 
 on:
   push:
