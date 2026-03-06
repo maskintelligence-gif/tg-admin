@@ -19,7 +19,13 @@ export function useNotifications(
     // Only run on native Android/iOS — not in browser
     if (!Capacitor.isNativePlatform()) return;
 
-    const setup = async () => {
+    // If no callback passed, session not ready yet — skip
+    if (onNotificationTap === undefined) return;
+
+    // Small delay to let Capacitor fully initialize
+    const timer = setTimeout(setup, 1000);
+
+    async function setup() {
       // 1. Request permission
       let permission = await PushNotifications.checkPermissions();
       if (permission.receive === 'prompt') {
@@ -72,11 +78,10 @@ export function useNotifications(
       });
     };
 
-    setup();
-
     // Cleanup listeners on unmount
     return () => {
+      clearTimeout(timer);
       PushNotifications.removeAllListeners();
     };
-  }, []);
+  }, [onNotificationTap]);
 }
