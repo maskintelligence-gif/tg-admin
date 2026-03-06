@@ -15,10 +15,10 @@ begin
   -- Only fire on INSERT of a new pending order
   if TG_OP = 'INSERT' and NEW.order_status = 'pending_confirmation' then
     perform net.http_post(
-      url     := 'YOUR_SERVER_URL/webhook/new-order',
+      url     := 'tg-admin-lovat.vercel.app/webhook/new-order',
       headers := '{"Content-Type": "application/json"}'::jsonb,
       body    := json_build_object(
-        'secret', 'YOUR_WEBHOOK_SECRET',
+        'secret', 'tg-admin-secret-2026',
         'record', row_to_json(NEW)
       )::text
     );
@@ -41,10 +41,10 @@ begin
   -- Only notify for customer messages, not admin replies
   if NEW.sender_type = 'customer' then
     perform net.http_post(
-      url     := 'YOUR_SERVER_URL/webhook/new-message',
+      url     := 'tg-admin-lovat.vercel.app/webhook/new-message',
       headers := '{"Content-Type": "application/json"}'::jsonb,
       body    := json_build_object(
-        'secret', 'YOUR_WEBHOOK_SECRET',
+        'secret', 'tg-admin-secret-2026',
         'record', row_to_json(NEW)
       )::text
     );
@@ -67,10 +67,10 @@ begin
   -- Fire when stock drops below 5 and wasn't below 5 before
   if NEW.stock_quantity < 5 and OLD.stock_quantity >= 5 then
     perform net.http_post(
-      url     := 'YOUR_SERVER_URL/webhook/low-stock',
+      url     := 'tg-admin-lovat.vercel.app/webhook/low-stock',
       headers := '{"Content-Type": "application/json"}'::jsonb,
       body    := json_build_object(
-        'secret', 'YOUR_WEBHOOK_SECRET',
+        'secret', 'tg-admin-secret-2026',
         'record', row_to_json(NEW)
       )::text
     );
