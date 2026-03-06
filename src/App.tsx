@@ -9,6 +9,7 @@ import { ProductsScreen } from './components/screens/Products';
 import { MediaLibrary } from './components/screens/MediaLibrary';
 import { ReportsScreen } from './components/screens/Reports';
 import { supabase } from './lib/supabase';
+import { useNotifications } from './lib/useNotifications';
 import { WifiOff, Loader2 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
@@ -61,6 +62,11 @@ export default function App() {
   const [tab, setTab] = useState<AdminTab>('home');
   const online = useOnline();
   const badges = useBadges(tab);
+
+  // Register for push notifications after login, navigate on tap
+  useNotifications((data) => {
+    if (data?.tab) setTab(data.tab as AdminTab);
+  });
 
   useEffect(() => {
     // Check for existing session on mount
