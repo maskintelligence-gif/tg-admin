@@ -2,8 +2,8 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch: # allows manual trigger from GitHub UI
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   build-apk:
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Setup Java (required for Gradle / Android build) ────────────────
+      # ── 2. Setup Java ──────────────────────────────────────────────────────
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -33,50 +33,49 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── 5. Build Vite app (outputs to dist/) ──────────────────────────────
+      # ── 5. Build Vite app ─────────────────────────────────────────────────
       - name: Build web app
         run: npm run build
         env:
           VITE_BASE_URL: /
+          VITE_NOTIFICATION_SERVER_URL: ${{ secrets.VITE_NOTIFICATION_SERVER_URL }}
+          VITE_WEBHOOK_SECRET: ${{ secrets.VITE_WEBHOOK_SECRET }}
 
-      # ── 6. Install Capacitor CLI + Android platform ────────────────────────
-      - name: Install Capacitor
-        run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-
-      # ── 7. Add Android platform (initializes android/ folder) ─────────────
+      # ── 6. Add Android platform ───────────────────────────────────────────
       - name: Add Android platform
         run: npx cap add android
 
-      # ── 8. Sync web build into Android project ─────────────────────────────
+      # ── 7. Inject google-services.json (required for FCM) ─────────────────
+      - name: Inject google-services.json
+        run: |
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+          echo "✅ google-services.json injected"
+
+      # ── 8. Sync Capacitor ─────────────────────────────────────────────────
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # ── 9. Set up Android SDK ──────────────────────────────────────────────
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      # ── 10. Make Gradle wrapper executable ────────────────────────────────
+      # ── 9. Make Gradle wrapper executable ────────────────────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 11. Build debug APK ────────────────────────────────────────────────
+      # ── 10. Build debug APK ───────────────────────────────────────────────
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      # ── 12. Upload APK as downloadable artifact ────────────────────────────
+      # ── 11. Upload APK artifact ───────────────────────────────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: tg-admin-debug-${{ github.run_number }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30 # artifact stays downloadable for 30 days
+          retention-days: 30
 
-      # ── 13. Show APK size in logs ──────────────────────────────────────────
+      # ── 12. Print APK info ────────────────────────────────────────────────
       - name: Print APK info
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           echo "✅ APK built successfully"
           echo "📦 Size: $(du -sh $APK | cut -f1)"
-          echo "📥 Download from the Actions tab → this workflow run → Artifacts"
+          echo "📥 Download from Actions → this run → Artifacts"
