@@ -167,6 +167,10 @@ async function getTokens() {
   return rows.map((r) => r.fcm_token);
 }
 
-// ── Start ─────────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`🔔 Notification server running on port ${PORT}`));
+// ── Start (local dev) / Export (Vercel) ──────────────────────────────────────
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => console.log(`🔔 Notification server running on port ${PORT}`));
+}
+
+module.exports = app;
