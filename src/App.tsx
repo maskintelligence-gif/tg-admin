@@ -63,10 +63,12 @@ export default function App() {
   const online = useOnline();
   const badges = useBadges(tab);
 
-  // Register for push notifications after login, navigate on tap
-  useNotifications((data) => {
-    if (data?.tab) setTab(data.tab as AdminTab);
-  });
+  // Only register for push notifications once we have a confirmed session
+  useNotifications(
+    session !== null && session !== false
+      ? (data) => { if (data?.tab) setTab(data.tab as AdminTab); }
+      : undefined
+  );
 
   useEffect(() => {
     // Check for existing session on mount
