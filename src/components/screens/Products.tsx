@@ -23,6 +23,7 @@ interface Product {
   category: string;
   stock_quantity: number;
   featured: boolean;
+  is_flash_sale: boolean;
   specs: Record<string, string> | null;
   primary_image_url: string | null;
   rating: number;
@@ -406,6 +407,7 @@ function ProductForm({ product, onSave, onClose }: {
     category: product?.category || 'Phones',
     stock_quantity: product?.stock_quantity?.toString() || '1',
     featured: product?.featured || false,
+    is_flash_sale: product?.is_flash_sale || false,
   });
 
   const [specsText, setSpecsText] = useState(
@@ -494,6 +496,7 @@ function ProductForm({ product, onSave, onClose }: {
         category: form.category,
         stock_quantity: Number(form.stock_quantity),
         featured: form.featured,
+        is_flash_sale: form.is_flash_sale,
         primary_image_url: primaryUrl,
         specs: parseSpecs(),
         updated_at: new Date().toISOString(),
@@ -637,6 +640,35 @@ function ProductForm({ product, onSave, onClose }: {
             style={{ background: form.featured ? 'var(--accent)' : 'var(--border2)' }}>
             <div className="w-5 h-5 rounded-full absolute top-0.5 transition-all"
               style={{ background: 'white', left: form.featured ? '26px' : '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+          </div>
+        </button>
+
+        {/* Flash Sale toggle */}
+        <button
+          onClick={() => setForm((p) => ({ ...p, is_flash_sale: !p.is_flash_sale }))}
+          className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl transition-all active:scale-98"
+          style={{
+            background: form.is_flash_sale ? 'rgba(239,68,68,0.06)' : 'var(--surface2)',
+            border: `1px solid ${form.is_flash_sale ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`,
+          }}>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Flash Sale</span>
+              {form.is_flash_sale && (
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wide"
+                  style={{ background: 'rgba(239,68,68,0.15)', color: '#dc2626' }}>
+                  ⚡ Active
+                </span>
+              )}
+            </div>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text3)' }}>
+              Shows in Flash Sale section with countdown
+            </p>
+          </div>
+          <div className="w-12 h-6 rounded-full transition-all relative flex-shrink-0 ml-4"
+            style={{ background: form.is_flash_sale ? '#dc2626' : 'var(--border2)' }}>
+            <div className="w-5 h-5 rounded-full absolute top-0.5 transition-all"
+              style={{ background: 'white', left: form.is_flash_sale ? '26px' : '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
           </div>
         </button>
 
