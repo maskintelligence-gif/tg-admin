@@ -24,6 +24,7 @@ interface Product {
   stock_quantity: number;
   featured: boolean;
   is_flash_sale: boolean;
+  flash_sale_ends_at?: string | null;
   specs: Record<string, string> | null;
   primary_image_url: string | null;
   rating: number;
@@ -408,6 +409,7 @@ function ProductForm({ product, onSave, onClose }: {
     stock_quantity: product?.stock_quantity?.toString() || '1',
     featured: product?.featured || false,
     is_flash_sale: product?.is_flash_sale || false,
+    flash_sale_ends_at: product?.flash_sale_ends_at || '',
   });
 
   const [specsText, setSpecsText] = useState(
@@ -497,6 +499,7 @@ function ProductForm({ product, onSave, onClose }: {
         stock_quantity: Number(form.stock_quantity),
         featured: form.featured,
         is_flash_sale: form.is_flash_sale,
+        flash_sale_ends_at: form.is_flash_sale && form.flash_sale_ends_at ? form.flash_sale_ends_at : null,
         primary_image_url: primaryUrl,
         specs: parseSpecs(),
         updated_at: new Date().toISOString(),
@@ -645,7 +648,17 @@ function ProductForm({ product, onSave, onClose }: {
 
         {/* Flash Sale toggle */}
         <button
-          onClick={() => setForm((p) => ({ ...p, is_flash_sale: !p.is_flash_sale }))}
+          onClick={() => {
+            const turning_on = !form.is_flash_sale;
+            setForm((p) => ({
+              ...p,
+              is_flash_sale: turning_on,
+              // Auto-set 7-day expiry when turning on; clear when turning off
+              flash_sale_ends_at: turning_on
+                ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+                : '',
+            }));
+          }}
           className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl transition-all active:scale-98"
           style={{
             background: form.is_flash_sale ? 'rgba(239,68,68,0.06)' : 'var(--surface2)',
