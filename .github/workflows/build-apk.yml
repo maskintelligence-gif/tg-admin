@@ -31,7 +31,7 @@ jobs:
 
       # ── 4. Install dependencies ────────────────────────────────────────────
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       # ── 5. Build Vite app ─────────────────────────────────────────────────
       - name: Build web app
@@ -51,20 +51,31 @@ jobs:
           echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
           echo "✅ google-services.json injected"
 
-      # ── 8. Sync Capacitor ─────────────────────────────────────────────────
+      # ── 8. Inject app icons into Android project ──────────────────────────
+      - name: Inject app icons
+        run: |
+          cp -r android-resources/res/mipmap-mdpi/*     android/app/src/main/res/mipmap-mdpi/
+          cp -r android-resources/res/mipmap-hdpi/*     android/app/src/main/res/mipmap-hdpi/
+          cp -r android-resources/res/mipmap-xhdpi/*    android/app/src/main/res/mipmap-xhdpi/
+          cp -r android-resources/res/mipmap-xxhdpi/*   android/app/src/main/res/mipmap-xxhdpi/
+          cp -r android-resources/res/mipmap-xxxhdpi/*  android/app/src/main/res/mipmap-xxxhdpi/
+          cp -r android-resources/res/mipmap-anydpi-v26/* android/app/src/main/res/mipmap-anydpi-v26/
+          echo "✅ App icons injected"
+
+      # ── 9. Sync Capacitor ─────────────────────────────────────────────────
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # ── 9. Make Gradle wrapper executable ────────────────────────────────
+      # ── 10. Make Gradle wrapper executable ───────────────────────────────
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 10. Build debug APK ───────────────────────────────────────────────
+      # ── 11. Build debug APK ───────────────────────────────────────────────
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      # ── 11. Upload APK artifact ───────────────────────────────────────────
+      # ── 12. Upload APK artifact ───────────────────────────────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -72,7 +83,7 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── 12. Print APK info ────────────────────────────────────────────────
+      # ── 13. Print APK info ────────────────────────────────────────────────
       - name: Print APK info
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
