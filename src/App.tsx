@@ -7,6 +7,7 @@ import { ChatScreen } from './components/screens/Chat';
 import { PaymentsScreen } from './components/screens/Payments';
 import { ProductsScreen } from './components/screens/Products';
 import { MediaLibrary } from './components/screens/MediaLibrary';
+import { Returns } from './components/screens/Returns';
 import { ReportsScreen } from './components/screens/Reports';
 import { supabase } from './lib/supabase';
 import { useNotifications } from './lib/useNotifications';
@@ -30,15 +31,17 @@ function useBadges(tab: AdminTab) {
 
   const loadBadges = async () => {
     try {
-      const [pending, unread, unpaid] = await Promise.all([
+      const [pending, unread, unpaid, pendingReturns] = await Promise.all([
         supabase.from('orders').select('order_id', { count: 'exact', head: true }).eq('order_status', 'pending_confirmation'),
         supabase.from('messages').select('message_id', { count: 'exact', head: true }).eq('sender_type', 'customer').is('read_at', null),
         supabase.from('orders').select('order_id', { count: 'exact', head: true }).eq('payment_status', 'pending_payment').not('order_status', 'eq', 'cancelled'),
+        supabase.from('return_requests').select('return_id', { count: 'exact', head: true }).eq('status', 'pending'),
       ]);
       setBadges({
         orders: pending.count || 0,
         chat: unread.count || 0,
         payments: unpaid.count || 0,
+        returns: pendingReturns.count || 0,
       });
     } catch {}
   };
@@ -49,6 +52,7 @@ function useBadges(tab: AdminTab) {
     const ch = supabase.channel('badges-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, loadBadges)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, loadBadges)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'return_requests' }, loadBadges)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
@@ -115,6 +119,7 @@ export default function App() {
         {tab === 'chat'     && <ChatScreen />}
         {tab === 'payments' && <PaymentsScreen />}
         {tab === 'products' && <ProductsScreen />}
+        {tab === 'returns'  && <Returns />}
         {tab === 'reports'  && <ReportsScreen />}
         {tab === 'media'    && (
           <div className="flex flex-col pb-20" style={{ minHeight: '100vh' }}>
