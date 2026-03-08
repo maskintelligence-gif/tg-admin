@@ -1,6 +1,6 @@
-import { Home, Package, MessageCircle, DollarSign, ShoppingBag, BarChart2, Images } from 'lucide-react';
+import { Home, Package, MessageCircle, DollarSign, ShoppingBag, BarChart2, Images, RotateCcw } from 'lucide-react';
 
-export type AdminTab = 'home' | 'orders' | 'chat' | 'payments' | 'products' | 'media' | 'reports';
+export type AdminTab = 'home' | 'orders' | 'chat' | 'payments' | 'products' | 'media' | 'reports' | 'returns';
 
 interface AdminNavProps {
   active: AdminTab;
@@ -14,6 +14,7 @@ const tabs: { id: AdminTab; label: string; Icon: any }[] = [
   { id: 'chat',     label: 'Chat',    Icon: MessageCircle },
   { id: 'payments', label: 'Pay',     Icon: DollarSign },
   { id: 'products', label: 'Products',Icon: ShoppingBag },
+  { id: 'returns',  label: 'Returns', Icon: RotateCcw },
   { id: 'media',    label: 'Media',   Icon: Images },
   { id: 'reports',  label: 'Reports', Icon: BarChart2 },
 ];
