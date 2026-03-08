@@ -42,8 +42,15 @@ function ReturnCard({ req, onUpdate }: { req: ReturnRequest; onUpdate: () => voi
   const updateStatus = async (status: ReturnRequest['status']) => {
     setSaving(true);
     try {
-      await supabase.from('return_requests').update({ status, admin_notes: adminNotes || null }).eq('return_id', req.return_id);
+      const { error } = await supabase
+        .from('return_requests')
+        .update({ status, admin_notes: adminNotes || null })
+        .eq('return_id', req.return_id);
+      if (error) throw error;
       onUpdate();
+    } catch (err) {
+      console.error('Failed to update return request:', err);
+      alert('Failed to update. Check console for details.');
     } finally { setSaving(false); }
   };
 
