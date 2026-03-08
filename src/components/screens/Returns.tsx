@@ -39,42 +39,47 @@ function ReturnCard({ req, onUpdate }: { req: ReturnRequest; onUpdate: () => voi
   const date = new Date(req.created_at).toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' });
   const time = new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  const [saveError, setSaveError] = useState('');
+
   const updateStatus = async (status: ReturnRequest['status']) => {
     setSaving(true);
+    setSaveError('');
     try {
+      // Step 1: update return request status
       const { error } = await supabase
         .from('return_requests')
         .update({ status, admin_notes: adminNotes || null })
         .eq('return_id', req.return_id);
-      if (error) throw error;
+      if (error) throw new Error(`Status update failed: ${error.message}`);
 
-      // Send chat message to customer for approved / rejected
+      // Step 2: send chat message for approved / rejected
       if (status === 'approved' || status === 'rejected') {
-        const { data: conv } = await supabase
+        const { data: conv, error: convErr } = await supabase
           .from('conversations')
           .select('conversation_id')
           .eq('customer_id', req.customer_id)
           .maybeSingle();
 
-        if (conv) {
-          const itemList = req.items.map(i => `• ${i.product_name} ×${i.quantity}`).join('\n');
-          const message = status === 'approved'
-            ? `✅ *Return Request Approved!*\n\nYour return request for order ${req.order_number} has been approved.\n\nItems:\n${itemList}\n\nPlease bring the item(s) to our store or contact us to arrange a pickup. Your refund will be processed within 5–7 business days after we receive the items.${adminNotes ? `\n\nNote: ${adminNotes}` : ''}`
-            : `❌ *Return Request Rejected*\n\nUnfortunately your return request for order ${req.order_number} could not be approved.\n\nItems:\n${itemList}${adminNotes ? `\n\nReason: ${adminNotes}` : '\n\nIf you have questions, please reply to this message and we\'ll be happy to help.'}`;
+        if (convErr) throw new Error(`Conversation lookup failed: ${convErr.message}`);
+        if (!conv) throw new Error(`No chat conversation found for customer_id: ${req.customer_id}. Customer must open chat first.`);
 
-          await supabase.from('messages').insert({
-            conversation_id: conv.conversation_id,
-            sender_type: 'admin',
-            message_type: 'text',
-            content: message,
-          });
-        }
+        const itemList = req.items.map(i => `• ${i.product_name} ×${i.quantity}`).join('\n');
+        const message = status === 'approved'
+          ? `✅ *Return Request Approved!*\n\nYour return request for order ${req.order_number} has been approved.\n\nItems:\n${itemList}\n\nPlease bring the item(s) to our store or contact us to arrange a pickup. Your refund will be processed within 5–7 business days after we receive the items.${adminNotes ? `\n\nNote: ${adminNotes}` : ''}`
+          : `❌ *Return Request Rejected*\n\nUnfortunately your return request for order ${req.order_number} could not be approved.\n\nItems:\n${itemList}${adminNotes ? `\n\nReason: ${adminNotes}` : "\n\nIf you have questions, please reply to this message and we'll be happy to help."}`;
+
+        const { error: msgErr } = await supabase.from('messages').insert({
+          conversation_id: conv.conversation_id,
+          sender_type: 'admin',
+          message_type: 'text',
+          content: message,
+        });
+        if (msgErr) throw new Error(`Message insert failed: ${msgErr.message}`);
       }
 
       onUpdate();
     } catch (err) {
-      console.error('Failed to update return request:', err);
-      alert('Failed to update. Check console for details.');
+      setSaveError((err as Error).message);
     } finally { setSaving(false); }
   };
 
@@ -148,6 +153,12 @@ function ReturnCard({ req, onUpdate }: { req: ReturnRequest; onUpdate: () => voi
               className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none transition-colors"
             />
           </div>
+
+          {saveError && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mt-1">
+              ⚠️ {saveError}
+            </div>
+          )}
 
           {/* Actions */}
           {req.status === 'pending' && (
