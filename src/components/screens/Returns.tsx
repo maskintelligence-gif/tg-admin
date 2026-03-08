@@ -47,6 +47,30 @@ function ReturnCard({ req, onUpdate }: { req: ReturnRequest; onUpdate: () => voi
         .update({ status, admin_notes: adminNotes || null })
         .eq('return_id', req.return_id);
       if (error) throw error;
+
+      // Send chat message to customer for approved / rejected
+      if (status === 'approved' || status === 'rejected') {
+        const { data: conv } = await supabase
+          .from('conversations')
+          .select('conversation_id')
+          .eq('customer_id', req.customer_id)
+          .maybeSingle();
+
+        if (conv) {
+          const itemList = req.items.map(i => `• ${i.product_name} ×${i.quantity}`).join('\n');
+          const message = status === 'approved'
+            ? `✅ *Return Request Approved!*\n\nYour return request for order ${req.order_number} has been approved.\n\nItems:\n${itemList}\n\nPlease bring the item(s) to our store or contact us to arrange a pickup. Your refund will be processed within 5–7 business days after we receive the items.${adminNotes ? `\n\nNote: ${adminNotes}` : ''}`
+            : `❌ *Return Request Rejected*\n\nUnfortunately your return request for order ${req.order_number} could not be approved.\n\nItems:\n${itemList}${adminNotes ? `\n\nReason: ${adminNotes}` : '\n\nIf you have questions, please reply to this message and we\'ll be happy to help.'}`;
+
+          await supabase.from('messages').insert({
+            conversation_id: conv.conversation_id,
+            sender_type: 'admin',
+            message_type: 'text',
+            content: message,
+          });
+        }
+      }
+
       onUpdate();
     } catch (err) {
       console.error('Failed to update return request:', err);
