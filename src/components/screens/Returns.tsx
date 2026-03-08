@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { RotateCcw, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, Clock, RefreshCw } from 'lucide-react';
+import { RotateCcw, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Trash2 } from 'lucide-react';
 
 interface ReturnItem {
   product_name: string;
@@ -30,12 +30,21 @@ const STATUS_CONFIG = {
   completed: { label: 'Completed', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
 };
 
-function ReturnCard({ req, onUpdate }: { req: ReturnRequest; onUpdate: () => void }) {
+function ReturnCard({ req, onUpdate, onDelete }: { req: ReturnRequest; onUpdate: () => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const [adminNotes, setAdminNotes] = useState(req.admin_notes ?? '');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
   const Icon = cfg.icon;
+
+  const handleDelete = async () => {
+    if (!confirm(`Delete return request ${req.order_number}? This cannot be undone.`)) return;
+    setDeleting(true);
+    const { error } = await supabase.from('return_requests').delete().eq('return_id', req.return_id);
+    if (error) { alert('Delete failed: ' + error.message); setDeleting(false); return; }
+    onDelete();
+  };
   const date = new Date(req.created_at).toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' });
   const time = new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -101,6 +110,10 @@ function ReturnCard({ req, onUpdate }: { req: ReturnRequest; onUpdate: () => voi
               <Icon size={11} />
               {cfg.label}
             </span>
+            <button onClick={handleDelete} disabled={deleting}
+              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40">
+              {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+            </button>
             <button onClick={() => setExpanded(!expanded)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
               {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
@@ -217,7 +230,7 @@ export function Returns() {
   const pendingCount = requests.filter(r => r.status === 'pending').length;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-3xl mx-auto pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -258,7 +271,7 @@ export function Returns() {
       ) : (
         <div className="space-y-3">
           {filtered.map(req => (
-            <ReturnCard key={req.return_id} req={req} onUpdate={fetch} />
+            <ReturnCard key={req.return_id} req={req} onUpdate={fetch} onDelete={fetch} />
           ))}
         </div>
       )}

@@ -46,7 +46,7 @@ interface ClearModalProps {
 function ClearModal({ onClose, onCleared }: ClearModalProps) {
   const [mode, setMode] = useState<ClearMode>('today');
   const [customDate, setCustomDate] = useState('');
-  const [targets, setTargets] = useState({ orders: true, messages: false, customers: false });
+  const [targets, setTargets] = useState({ orders: true, messages: false, customers: false, returns: false });
   const [step, setStep] = useState<'configure' | 'confirm'>('configure');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -79,6 +79,14 @@ function ClearModal({ onClose, onCleared }: ClearModalProps) {
     setError('');
     try {
       const from = getFromDate();
+
+      if (targets.returns) {
+        let q = supabase.from('return_requests').delete();
+        if (from) q = q.gte('created_at', from) as any;
+        else q = q.neq('return_id', '00000000-0000-0000-0000-000000000000') as any;
+        const { error: e } = await q;
+        if (e) throw new Error(`Returns: ${e.message}`);
+      }
 
       if (targets.orders) {
         let q = supabase.from('orders').delete();
@@ -181,6 +189,7 @@ function ClearModal({ onClose, onCleared }: ClearModalProps) {
                     { key: 'orders', label: 'Orders', sub: 'Order records, timeline, order items' },
                     { key: 'messages', label: 'Messages', sub: 'Chat messages and conversations' },
                     { key: 'customers', label: 'Customers', sub: 'Customer accounts and addresses' },
+                    { key: 'returns', label: 'Return Requests', sub: 'All return and exchange requests' },
                   ].map(({ key, label, sub }, i) => (
                     <button key={key}
                       onClick={() => setTargets(t => ({ ...t, [key]: !t[key as keyof typeof t] }))}
